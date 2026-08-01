@@ -65,7 +65,24 @@ real attack surface an intruder could actually use.
 - A domain or subdomain pointed at the host (or just use the server IP for
   testing).
 
-## Quick start
+## Deploying on Linode / Akamai
+
+If you're hosting this on a Linode VM, use **[`linode/`](linode/)** instead of
+running `install.sh` by hand. It adds a StackScript that performs this entire
+build on first boot, an egress-restricted Cloud Firewall enforced outside the
+VM (the control that still holds if the honeypot is fully compromised),
+snapshot/reset tooling, and notes on the Akamai AUP as it applies to running a
+honeypot on your own account.
+
+```bash
+cd linode
+export LINODE_TOKEN=... DOMAIN=... WP_ADMIN_EMAIL=... ALLOWED_SSH_CIDR=...
+./provision-linode.sh
+```
+
+The manual path below still applies to any other Ubuntu host.
+
+## Quick start (any Ubuntu host)
 
 ```bash
 git clone <this repo> && cd wordpress-honeypot
@@ -124,6 +141,9 @@ right — that's the fastest, safest way to reset after a research window or a
 deeper compromise than the sandboxing was meant to allow. Don't try to
 "clean" a box you suspect was fully compromised; restore from snapshot.
 
+On Linode, `linode/snapshot.sh` and `linode/collect-logs.sh` implement this
+lifecycle. Collect logs *before* restoring — a restore overwrites the disks.
+
 ## Increasing fidelity (optional, higher risk)
 
 If your research goal is to observe *post-exploitation* behavior rather than
@@ -142,6 +162,7 @@ wordpress-honeypot/
 ├── .env.example
 ├── scripts/            # numbered provisioning steps, run by install.sh
 ├── config/             # nginx, fail2ban, logrotate, systemd unit templates
-├── mu-plugins/          # honeypot-logger.php, deployed into wp-content/mu-plugins
-└── monitoring/          # alert-watch.sh + its env example
+├── mu-plugins/         # honeypot-logger.php, deployed into wp-content/mu-plugins
+├── monitoring/         # alert-watch.sh + its env example
+└── linode/             # Linode/Akamai: StackScript, Cloud Firewall, snapshots
 ```
