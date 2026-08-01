@@ -106,6 +106,25 @@ Credentials are printed to `/root/wp-honeypot-secrets.txt` (mode `600`) at
 the end of the run — copy them out and delete the file if you don't need
 root on the box to see them.
 
+### Re-running a single step
+
+`install.sh` is not resumable as a whole — re-running it would try to
+reinstall WordPress core over an existing install. If one step fails, fix it
+and run that step and the ones after it directly:
+
+```bash
+cd wordpress-honeypot
+set -a; source .env; set +a
+export WP_ROOT="/var/www/${DOMAIN}" HONEYPOT_SRC="$PWD"
+
+bash scripts/04-populate-content.sh      # then 05, 06
+bash scripts/05-harden-and-monitor.sh
+bash scripts/06-deploy-honeytokens.sh
+```
+
+Step 04 deletes all existing posts and pages before creating its own, so
+re-running it is safe and won't duplicate content.
+
 ## Reviewing captured activity
 
 ```bash

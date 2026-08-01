@@ -11,9 +11,13 @@ $WP theme install twentytwentyfour --activate
 $WP option update blogdescription "Practical guidance for growing businesses."
 $WP option update timezone_string "America/New_York"
 
-# Clear out the default sample content.
-$WP post delete "$($WP post list --post_type=post --field=ID --posts_per_page=1)" --force 2>/dev/null || true
-for id in $($WP post list --post_type=page --field=ID); do
+# Clear out the default sample content. Deleting every existing post and page
+# (not just WordPress's one sample post) keeps this script re-runnable without
+# accumulating duplicates.
+for id in $($WP post list --post_type=post --field=ID --post_status=any); do
+  $WP post delete "$id" --force
+done
+for id in $($WP post list --post_type=page --field=ID --post_status=any); do
   $WP post delete "$id" --force
 done
 
@@ -87,7 +91,7 @@ $WP option update page_on_front "$home_id"
 $WP option update page_for_posts "$blog_id"
 
 $WP post create --post_type=post --post_status=publish \
-  --post_title="Five Signs Your Business Has Outgrown Its Current Processes" --porcelain <<'EOF'
+  --post_title="Five Signs Your Business Has Outgrown Its Current Processes" --porcelain >/dev/null <<'EOF'
 Growth is a good problem to have, but it exposes cracks in processes that
 worked fine at a smaller scale. Here are five signs it's time for a closer
 look: recurring bottlenecks around the same one or two people, spreadsheets
@@ -98,7 +102,7 @@ day to day.
 EOF
 
 $WP post create --post_type=post --post_status=publish \
-  --post_title="A Simple Framework for Cash Flow Forecasting" --porcelain <<'EOF'
+  --post_title="A Simple Framework for Cash Flow Forecasting" --porcelain >/dev/null <<'EOF'
 Cash flow forecasting doesn't need to be complicated to be useful. Start
 with a rolling 13-week view, separate recurring from one-time items, and
 revisit your assumptions weekly rather than monthly. The goal isn't
@@ -107,7 +111,7 @@ tight, so you can act before it becomes a crisis.
 EOF
 
 $WP post create --post_type=post --post_status=publish \
-  --post_title="What We Look for in the First 30 Days With a New Client" --porcelain <<'EOF'
+  --post_title="What We Look for in the First 30 Days With a New Client" --porcelain >/dev/null <<'EOF'
 Before recommending any changes, we spend the first month simply listening
 and observing: shadowing key workflows, reviewing existing reporting, and
 talking to the people closest to the work. Most of the improvements we
@@ -115,15 +119,32 @@ eventually recommend come directly from that first month, not from a
 generic playbook.
 EOF
 
-menu_id=$($WP menu list --fields=term_id --format=csv | tail -n1)
-if [[ -z "$menu_id" ]]; then
-  menu_id=$($WP menu create "Primary" --porcelain)
+# Navigation. Block themes (Twenty Twenty-Four and later defaults) register no
+# classic menu locations, and their header Navigation block already falls back
+# to listing published pages — so a classic menu there would be built and then
+# render nowhere. Only build one for a classic theme.
+is_block_theme=$($WP eval 'echo ( function_exists( "wp_is_block_theme" ) && wp_is_block_theme() ) ? "1" : "0";')
+
+if [[ "$is_block_theme" == "1" ]]; then
+  echo "Block theme active — header navigation renders from the published page list."
+else
+  # Note: --field (singular) prints bare values; --fields (plural) with
+  # --format=csv prepends a header row, which would be read back as a menu ID.
+  menu_id=$($WP menu list --field=term_id 2>/dev/null | head -n1 || true)
+  if [[ -z "$menu_id" ]]; then
+    menu_id=$($WP menu create "Primary" --porcelain)
+  fi
+
+  $WP menu item add-post "$menu_id" "$home_id" --title="Home"
+  $WP menu item add-post "$menu_id" "$about_id" --title="About"
+  $WP menu item add-post "$menu_id" "$services_id" --title="Services"
+  $WP menu item add-post "$menu_id" "$blog_id" --title="Blog"
+  $WP menu item add-post "$menu_id" "$contact_id" --title="Contact"
+
+  location=$($WP menu location list --field=location 2>/dev/null | head -n1 || true)
+  if [[ -n "$location" ]]; then
+    $WP menu location assign "$menu_id" "$location"
+  fi
 fi
-$WP menu item add-post "$menu_id" "$home_id" --title="Home"
-$WP menu item add-post "$menu_id" "$about_id" --title="About"
-$WP menu item add-post "$menu_id" "$services_id" --title="Services"
-$WP menu item add-post "$menu_id" "$blog_id" --title="Blog"
-$WP menu item add-post "$menu_id" "$contact_id" --title="Contact"
-$WP menu location assign "$menu_id" primary 2>/dev/null || true
 
 $WP rewrite structure '/%postname%/' --hard
