@@ -27,7 +27,13 @@ install -m 640 -o www-data -g www-data \
   "${HONEYPOT_SRC}/mu-plugins/honeypot-logger.php" \
   "${WP_ROOT}/wp-content/mu-plugins/honeypot-logger.php"
 
-$WP config set HONEYPOT_LOG_DIR "${HONEYPOT_LOG_DIR}" --raw=false
+# Must not be --raw: WP-CLI treats any non-empty value (including the string
+# "false") as truthy, so `--raw=false` writes the path unquoted and turns
+# wp-config.php into a PHP parse error. Quoted string is the default.
+$WP config set HONEYPOT_LOG_DIR "${HONEYPOT_LOG_DIR}" --type=constant
+
+# Fail loudly here rather than serving a 500 on every request.
+php -l "${WP_ROOT}/wp-config.php"
 
 # --- Nginx ---
 sed \
