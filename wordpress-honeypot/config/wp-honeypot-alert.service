@@ -1,0 +1,18 @@
+# Installed to /etc/systemd/system/wp-honeypot-alert.service
+[Unit]
+Description=WordPress honeypot log alerting
+After=network.target nginx.service
+
+[Service]
+Type=simple
+EnvironmentFile=/etc/wp-honeypot/alert.env
+ExecStart=/opt/wp-honeypot/monitoring/alert-watch.sh
+Restart=always
+RestartSec=5
+User=root
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadOnlyPaths=/var/log/wp-honeypot
+
+[Install]
+WantedBy=multi-user.target

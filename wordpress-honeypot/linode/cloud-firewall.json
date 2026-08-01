@@ -1,0 +1,75 @@
+{
+  "label": "wp-honeypot-fw",
+  "rules": {
+    "inbound_policy": "DROP",
+    "outbound_policy": "DROP",
+    "inbound": [
+      {
+        "label": "allow-ssh-admin",
+        "description": "SSH restricted to the admin CIDR. __SSH_CIDR__ is substituted by provision-linode.sh. IPv6 is intentionally omitted so an IPv4 restriction cannot be bypassed over v6.",
+        "protocol": "TCP",
+        "ports": "22",
+        "addresses": { "ipv4": ["__SSH_CIDR__"] },
+        "action": "ACCEPT"
+      },
+      {
+        "label": "allow-http",
+        "description": "The intended attack surface.",
+        "protocol": "TCP",
+        "ports": "80",
+        "addresses": { "ipv4": ["0.0.0.0/0"], "ipv6": ["::/0"] },
+        "action": "ACCEPT"
+      },
+      {
+        "label": "allow-https",
+        "description": "The intended attack surface.",
+        "protocol": "TCP",
+        "ports": "443",
+        "addresses": { "ipv4": ["0.0.0.0/0"], "ipv6": ["::/0"] },
+        "action": "ACCEPT"
+      }
+    ],
+    "outbound": [
+      {
+        "label": "allow-dns-udp",
+        "description": "Name resolution.",
+        "protocol": "UDP",
+        "ports": "53",
+        "addresses": { "ipv4": ["0.0.0.0/0"], "ipv6": ["::/0"] },
+        "action": "ACCEPT"
+      },
+      {
+        "label": "allow-dns-tcp",
+        "description": "Name resolution (large responses).",
+        "protocol": "TCP",
+        "ports": "53",
+        "addresses": { "ipv4": ["0.0.0.0/0"], "ipv6": ["::/0"] },
+        "action": "ACCEPT"
+      },
+      {
+        "label": "allow-ntp",
+        "description": "Clock sync — log timestamps must be trustworthy.",
+        "protocol": "UDP",
+        "ports": "123",
+        "addresses": { "ipv4": ["0.0.0.0/0"], "ipv6": ["::/0"] },
+        "action": "ACCEPT"
+      },
+      {
+        "label": "allow-http-egress",
+        "description": "apt repositories that redirect over plain HTTP.",
+        "protocol": "TCP",
+        "ports": "80",
+        "addresses": { "ipv4": ["0.0.0.0/0"], "ipv6": ["::/0"] },
+        "action": "ACCEPT"
+      },
+      {
+        "label": "allow-https-egress",
+        "description": "apt, WordPress.org core updates, and the alert webhook.",
+        "protocol": "TCP",
+        "ports": "443",
+        "addresses": { "ipv4": ["0.0.0.0/0"], "ipv6": ["::/0"] },
+        "action": "ACCEPT"
+      }
+    ]
+  }
+}

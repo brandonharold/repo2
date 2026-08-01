@@ -1,0 +1,14 @@
+# Installed to /etc/logrotate.d/wp-honeypot
+/var/log/wp-honeypot/*.log {
+    daily
+    rotate 90
+    compress
+    delaycompress
+    missingok
+    notifempty
+    create 0640 www-data adm
+    sharedscripts
+    postrotate
+        systemctl reload nginx >/dev/null 2>&1 || true
+    endscript
+}
