@@ -1,0 +1,76 @@
+# Template for /etc/nginx/sites-available/wp-honeypot.
+# Placeholders __DOMAIN__, __WP_ROOT__, __PHP_VERSION__, __HONEYPOT_LOG_DIR__
+# are substituted by scripts/05-harden-and-monitor.sh.
+
+log_format honeypot '$time_iso8601 $remote_addr "$request" $status $body_bytes_sent '
+                     '"$http_referer" "$http_user_agent" rt=$request_time';
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name __DOMAIN__;
+
+    root __WP_ROOT__;
+    index index.php;
+
+    access_log /var/log/nginx/wp-honeypot-access.log honeypot;
+    error_log  /var/log/nginx/wp-honeypot-error.log warn;
+
+    client_max_body_size 8m;
+
+    # Honeytoken decoys: no legitimate visitor ever requests these, so any
+    # hit is logged to a dedicated file for near-zero-false-positive alerting.
+    # Must come before the generic hidden-file / backup-file deny rules below.
+    location ~* ^/(wp-config\.php\.bak|wp-config\.php~|\.env|\.git/config|backup\.zip)$ {
+        access_log /var/log/nginx/wp-honeypot-access.log honeypot;
+        access_log __HONEYPOT_LOG_DIR__/honeytoken.log honeypot;
+        try_files $uri =404;
+    }
+
+    # Block execution and access to anything else hidden or backup-like.
+    location ~ /\. {
+        deny all;
+    }
+    location ~* \.(bak|sql|log|swp|old)$ {
+        deny all;
+    }
+    location = /wp-config.php {
+        deny all;
+    }
+
+    # Never execute PHP out of the uploads directory.
+    location ~* /wp-content/uploads/.*\.php$ {
+        deny all;
+    }
+
+    location / {
+        try_files $uri $uri/ /index.php?$args;
+    }
+
+    # Brute-force / amplification entry points: rate-limited and logged to
+    # a dedicated file so fail2ban and manual review don't have to grep the
+    # full access log.
+    location = /wp-login.php {
+        limit_req zone=wp_honeypot_limit burst=5 nodelay;
+        access_log /var/log/nginx/wp-honeypot-access.log honeypot;
+        access_log __HONEYPOT_LOG_DIR__/wp-login.log honeypot;
+        include fastcgi_params;
+        fastcgi_pass unix:/run/php/php__PHP_VERSION__-fpm.sock;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+    }
+
+    location = /xmlrpc.php {
+        limit_req zone=wp_honeypot_limit burst=5 nodelay;
+        access_log /var/log/nginx/wp-honeypot-access.log honeypot;
+        access_log __HONEYPOT_LOG_DIR__/xmlrpc.log honeypot;
+        include fastcgi_params;
+        fastcgi_pass unix:/run/php/php__PHP_VERSION__-fpm.sock;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+    }
+
+    location ~ \.php$ {
+        include fastcgi_params;
+        fastcgi_pass unix:/run/php/php__PHP_VERSION__-fpm.sock;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+    }
+}

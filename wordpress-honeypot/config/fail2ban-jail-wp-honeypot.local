@@ -1,0 +1,27 @@
+# Installed to /etc/fail2ban/jail.d/wp-honeypot.local
+#
+# Thresholds are deliberately generous on the login jail so a useful sample
+# of brute-force attempts is still captured before the source is banned.
+# The honeytoken jail bans on the first hit — there is no legitimate reason
+# for any client to ever request those paths.
+
+[wp-honeypot-login]
+enabled  = true
+filter   = wp-honeypot-login
+logpath  = /var/log/wp-honeypot/events.log
+maxretry = 15
+findtime = 600
+bantime  = 3600
+action   = %(action_)s
+
+[wp-honeypot-honeytoken]
+enabled  = true
+filter   = wp-honeypot-honeytoken
+logpath  = /var/log/wp-honeypot/honeytoken.log
+maxretry = 1
+findtime = 3600
+bantime  = 86400
+action   = %(action_)s
+
+[sshd]
+enabled = true
